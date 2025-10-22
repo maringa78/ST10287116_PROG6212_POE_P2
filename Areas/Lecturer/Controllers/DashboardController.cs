@@ -1,27 +1,42 @@
-﻿using Microsoft.AspNetCore.Mvc;
-namespace ST10287116_PROG6212_POE_P2.Areas.Lecturer.Controllers;
+﻿using System.Linq;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using ST10287116_PROG6212_POE_P2.Models;
 
-
-[Area("Lecturer")]
-public class DashboardController : Controller
+namespace ST10287116_PROG6212_POE_P2.Areas.Lecturer.Controllers
 {
-    private readonly ApplicationDbContext _context;
-
-    public DashboardController(ApplicationDbContext context)
+    [Area("Lecturer")]
+    public class DashboardController : Controller
     {
-        _context = context;
-    }
+        private readonly ApplicationDbContext _context;
 
-    public IActionResult Index()
-    {
-        // Load the lecturer's claims (change the LecturerId if needed)
-        int lecturerId = 1;
+        public DashboardController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
-        var claims = _context.Claims
-            .Where(c => c.LecturerId == lecturerId)
-            .OrderByDescending(c => c.ClaimDate)
-            .ToList();
+        public IActionResult Index()
+        {
+            // Prefer showing claims for the signed-in user; fall back to lecturerId if no session user.
+            string? userId = HttpContext.Session.GetString("UserId");
+            int lecturerId = 1;
 
-        return View(claims);
+            var query = _context.Claims.AsQueryable();
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                query = query.Where(c => c.UserId == userId || c.LecturerId == lecturerId);
+            }
+            else
+            {
+                query = query.Where(c => c.LecturerId == lecturerId);
+            }
+
+            var claims = query
+                .OrderByDescending(c => c.ClaimDate)
+                .ToList();
+
+            return View(claims);
+        }
     }
 }
