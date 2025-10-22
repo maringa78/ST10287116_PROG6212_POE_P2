@@ -1,5 +1,5 @@
 ﻿@{
-    // Ensure this area view uses the shared layout so CSS/JS from _Layout are applied
+    
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -15,7 +15,7 @@
         <div class="btn-group me-2">
             <button type="button" class="btn btn-sm btn-outline-secondary">Share</button>
         </div>
-        @* force login link to the root Account controller (no area) *@
+        
         @if (Context.Session.GetString("UserId") == null)
         {
             <a asp-area="" asp-controller="Account" asp-action="Login" class="btn btn-sm btn-primary ms-2">Login</a>
