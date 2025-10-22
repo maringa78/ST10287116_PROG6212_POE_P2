@@ -3,14 +3,9 @@ using ST10287116_PROG6212_POE_P2.Models;
 using ST10287116_PROG6212_POE_P2.Services;  
 namespace ST10287116_PROG6212_POE_P2.Controllers
 {
-    public class AccountController : Controller // <-- Inherit from Controller
+    public class AccountController(AuthService authService) : Controller 
     {
-        private readonly AuthService _authService;
-
-        public AccountController(AuthService authService)
-        {
-            _authService = authService;
-        }
+        private readonly AuthService _authService = authService;
 
         public IActionResult Login()
         {
