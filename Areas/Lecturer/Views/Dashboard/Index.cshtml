@@ -33,7 +33,7 @@
                 <form asp-action="Submit" asp-controller="Claims" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label">Claim Type</label>
-                        <select asp-for="Type" class="form-select" required>
+                        <select name="Type" class="form-select" required>
                             <option>Select claim type</option>
                             <option value="Travel">Travel</option>
                             <option value="Equipment">Equipment</option>
@@ -44,15 +44,15 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Claim Date</label>
-                        <input type="date" class="form-control" asp-for="ClaimDate" required />
+                        <input type="date" class="form-control" name="ClaimDate" required />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Amount (e.g., 250.00)</label>
-                        <input type="number" step="0.01" class="form-control" asp-for="Amount" placeholder="250.00" required />
+                        <input type="number" step="0.01" class="form-control" name="Amount" placeholder="250.00" required />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>
-                        <textarea class="form-control" rows="3" asp-for="Description" placeholder="Provide a detailed description of your claim..."></textarea>
+                        <textarea class="form-control" rows="3" name="Description" placeholder="Provide a detailed description of your claim..."></textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Supporting Documents</label>
