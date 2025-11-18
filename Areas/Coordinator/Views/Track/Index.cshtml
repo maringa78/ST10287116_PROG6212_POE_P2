@@ -1,66 +1,61 @@
-﻿@{
-
-    Layout = "~/Views/Shared/_Layout.cshtml";
-}
-
-@using ST10287116_PROG6212_POE_P2.Models
+﻿@using ST10287116_PROG6212_POE_P2.Models
 @model IEnumerable<ST10287116_PROG6212_POE_P2.Models.Claim>
 @{
-    ViewData["Title"] = "Track Claims - ClaimIT";
+    ViewData["Title"] = "Verify Claims - ClaimIT";
 }
 
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Track Claims</h1>
-</div>
-
-<div class="card">
-    <div class="card-header d-flex justify-content-between">
-        <input type="text" class="form-control w-25" placeholder="Search by Claim ID, Status, or Date..." />
-        <select class="form-select w-auto">
-            <option>All Statuses</option>
-            <option>Pending</option>
-            <option>Approved</option>
-            <option>Rejected</option>
-        </select>
-    </div>
-    <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr>
-                    <th>Claim ID</th>
-                    <th>Claim Date</th>
-                    <th>Hours</th>
-                    <th>Status</th>
-                    <th>Last Updated</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
-                {
-                    <tr>
-                        <td>@item.ClaimId</td>
-                        <td>@item.ClaimDate.ToString("yyyy-MM-dd")</td>
-                        <td>@item.HoursWorked</td>
-                        <td>
-                            <span class="badge @(item.Status == ClaimStatus.Approved ? "bg-success" : item.Status == ClaimStatus.Pending ? "bg-warning" : "bg-danger")">
-                                @item.Status
-                            </span>
-                        </td>
-                        <td>@item.LastUpdated.ToString("yyyy-MM-dd")</td>
-                        <td><a href="#" class="btn btn-sm btn-outline-primary">View Details</a></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-        <nav class="d-flex justify-content-between p-2 small">
-            <span>Showing 1-5 of 12 claims</span>
-            <ul class="pagination mb-0">
-                <li class="page-item"><a class="page-link" href="#">Previous</a></li>
-                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                <li class="page-item"><a class="page-link" href="#">Next</a></li>
-            </ul>
-        </nav>
-    </div>
-</div>
+<h2>Verify Claims (Coordinator)</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Hours</th>
+            <th>Rate</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Documents</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Where(c => c.Status == ClaimStatus.Pending))  // Only Pending
+        {
+            <tr>
+                <td>@item.ClaimId</td>
+                <td>@item.ClaimDate.ToString("yyyy-MM-dd")</td>
+                <td>@item.Type</td>
+                <td>@item.HoursWorked</td>
+                <td>@item.HourlyRate</td>
+                <td>R @item.TotalAmount.ToString("F2")</td>
+                <td>@item.Status</td>
+                <td>
+                    @if (item.Documents.Any())
+                    {
+                        <ul class="list-unstyled">
+                            @foreach (var doc in item.Documents)
+                            {
+                                <li><a href="@doc.FilePath" target="_blank">@doc.FileName</a></li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No documents</span>
+                    }
+                </td>
+                <td>
+                    <form asp-action="Verify" method="post" class="d-inline">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <button type="submit" class="btn btn-success btn-sm">Verify</button>
+                    </form>
+                    <form asp-action="Reject" method="post" class="d-inline ms-1">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -2,7 +2,6 @@
 @model IEnumerable<ST10287116_PROG6212_POE_P2.Models.Claim>
 @{
     ViewData["Title"] = "Manager Dashboard - ClaimIT";
- 
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -11,12 +10,13 @@
 </div>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <input type="text" class="form-control w-25" placeholder="Search claims by ID or claimant..." />
         <select class="form-select w-auto">
             <option>All Statuses</option>
-            <option>Pending</option>
+            <option>Verified</option>
             <option>Approved</option>
+            <option>Rejected</option>
         </select>
     </div>
     <div class="card-body p-0">
@@ -27,40 +27,75 @@
                         <th>Claim ID</th>
                         <th>Claim Date</th>
                         <th>Claimant</th>
-                        <th>Amount</th>
+                        <th>Hours Worked</th>
+                        <th>Hourly Rate</th>
+                        <th class="text-end">Total Amount</th>
                         <th>Status</th>
+                        <th>Documents</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model)
+                    @{
+                        // Filter only Verified claims for manager review
+                        var verifiedClaims = Model.Where(c => c.Status == ClaimStatus.Verified).ToList();
+                    }
+                    @if (!verifiedClaims.Any())
                     {
                         <tr>
-                            <td>@item.ClaimId</td>
-                            <td>@item.ClaimDate.ToString("yyyy-MM-dd")</td>
-                            <td>@item.Description.Split(' ').FirstOrDefault() ?? "User"</td>  <!-- Mock claimant -->
-                            <td>R@item.Amount</td>
-                            <td><span class="badge @(item.Status == ClaimStatus.Approved ? "bg-success" : item.Status == ClaimStatus.Pending ? "bg-warning" : "bg-danger")">@item.Status</span></td>
-                            <td>
-                                @if (item.Status == ClaimStatus.Pending)
-                                {
-                                    <form asp-area="Manager" asp-controller="Dashboard" asp-action="Approve" method="post" class="d-inline">
+                            <td colspan="9" class="text-center text-muted p-4">No verified claims for review</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @* Loop through verified claims *@
+                        @foreach (var item in verifiedClaims)
+                        {
+                            <tr>
+                                <td>@item.ClaimId</td>
+                                <td>@item.ClaimDate.ToString("yyyy-MM-dd")</td>
+                                <td>@(item.Description.Split(' ').FirstOrDefault() ?? "User")</td> <!-- Mock claimant -->
+                                <td>@item.HoursWorked</td> <!-- NEW: Hours field -->
+                                <td>R @item.HourlyRate.ToString("F2")</td> <!-- NEW: Rate field, formatted -->
+                                <td class="text-end">@item.TotalAmount.ToString("C")</td> <!-- Currency format -->
+                                <td>
+                                    <span class="badge @(item.Status == ClaimStatus.Approved ? "bg-success" : item.Status == ClaimStatus.Verified ? "bg-info" : item.Status == ClaimStatus.Pending ? "bg-warning" : "bg-danger")">
+                                        @item.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (item.Documents != null && item.Documents.Any())
+                                    {
+                                        <ul class="list-unstyled mb-0">
+                                            @foreach (var doc in item.Documents)
+                                            {
+                                                <li class="small">
+                                                    <a href="@doc.FilePath" target="_blank" class="text-decoration-none">
+                                                        <i class="fas fa-file-pdf me-1"></i>@doc.FileName
+                                                    </a>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">No documents</span>
+                                    }
+                                </td>
+                                <td>
+                                    <form asp-controller="Dashboard" asp-action="Approve" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="id" value="@item.Id" />
                                         <button type="submit" class="btn btn-sm btn-success">Approve</button>
                                     </form>
-                                    <form asp-area="Manager" asp-controller="Dashboard" asp-action="Reject" method="post" class="d-inline ms-1">
+                                    <form asp-controller="Dashboard" asp-action="Reject" method="post" class="d-inline ms-1">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="id" value="@item.Id" />
                                         <button type="submit" class="btn btn-sm btn-danger">Reject</button>
                                     </form>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">Actioned</span>
-                                }
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>

@@ -9,20 +9,20 @@ namespace ST10287116_PROG6212_POE_P2.Areas.Manager.Controllers
     {
         private readonly ClaimService _claimService = claimService;
 
-        public IActionResult Index(string search = "")
+        public IActionResult Index()
         {
-            var claims = _claimService.GetPendingClaims(search);
+            var claims = _claimService.GetVerifiedClaims();  // NEW: Filter Verified (implement in service: _context.Claims.Where(c => c.Status == ClaimStatus.Verified).Include(c => c.Documents).ToList();)
             return View(claims);
         }
+
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public IActionResult Approve(int id)
         {
             _claimService.UpdateStatus(id, ClaimStatus.Approved);
             return RedirectToAction("Index");
         }
+
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public IActionResult Reject(int id)
         {
             _claimService.UpdateStatus(id, ClaimStatus.Rejected);
