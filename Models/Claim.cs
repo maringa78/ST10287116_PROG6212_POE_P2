@@ -31,7 +31,7 @@ namespace ST10287116_PROG6212_POE_P2.Models
 
         public ClaimStatus Status { get; set; } = ClaimStatus.Pending;
 
-        [Required, Range(0, int.MaxValue, ErrorMessage = "Hours must be non-negative")]
+        [Required, Range(0, 180, ErrorMessage = "Hours must be between 0 and 180")]
         public int HoursWorked { get; set; }  // NEW: Required per feedback
 
         [Required, Range(0, double.MaxValue, ErrorMessage = "Rate must be positive")]

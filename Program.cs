@@ -2,6 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using ST10287116_PROG6212_POE_P2.Services;
 using ST10287116_PROG6212_POE_P2.Models; // Add this for User / UserRole
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace ST10287116_PROG6212_POE_P2
 {
@@ -13,6 +14,23 @@ namespace ST10287116_PROG6212_POE_P2
 
             builder.Services.AddRazorPages();
             builder.Services.AddControllersWithViews();
+
+            // AuthN + AuthZ for role-protected areas/pages
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(o =>
+                {
+                    o.LoginPath = "/Account/Login";
+                    o.AccessDeniedPath = "/Error/StatusCode?code=403";
+                });
+
+            builder.Services.AddAuthorization(options =>
+            {
+                // Match your enum: Lecturer, Coordinator, Manager (add HR if you introduce it)
+                options.AddPolicy("Lecturer", p => p.RequireRole("Lecturer"));
+                options.AddPolicy("Coordinator", p => p.RequireRole("Coordinator"));
+                options.AddPolicy("Manager", p => p.RequireRole("Manager"));
+                // options.AddPolicy("HR", p => p.RequireRole("HR")); // only if you add HR to enum and seed users
+            });
 
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>
@@ -41,6 +59,7 @@ namespace ST10287116_PROG6212_POE_P2
             app.UseStaticFiles();
             app.UseRouting();
             app.UseSession();
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllerRoute(
