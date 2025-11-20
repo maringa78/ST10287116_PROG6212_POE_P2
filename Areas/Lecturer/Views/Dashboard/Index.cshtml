@@ -1,11 +1,7 @@
-﻿@{
-    
-    Layout = "~/Views/Shared/_Layout.cshtml";
-}
-
-@using ST10287116_PROG6212_POE_P2.Models
+﻿@using ST10287116_PROG6212_POE_P2.Models
 @model IEnumerable<ST10287116_PROG6212_POE_P2.Models.Claim>
 @{
+    Layout = "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Dashboard - ClaimIT";
 }
 
@@ -15,7 +11,6 @@
         <div class="btn-group me-2">
             <button type="button" class="btn btn-sm btn-outline-secondary">Share</button>
         </div>
-        
         @if (Context.Session.GetString("UserId") == null)
         {
             <a asp-area="" asp-controller="Account" asp-action="Login" class="btn btn-sm btn-primary ms-2">Login</a>
@@ -30,11 +25,12 @@
                 <h5>Claim Submission Form</h5>
             </div>
             <div class="card-body">
-                <form asp-action="Submit" asp-controller="Claims" method="post" enctype="multipart/form-data">
+                <form asp-area="" asp-action="Submit" asp-controller="Claims" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
                     <div class="mb-3">
                         <label class="form-label">Claim Type</label>
                         <select name="Type" class="form-select" required>
-                            <option>Select claim type</option>
+                            <option value="">Select claim type</option>
                             <option value="Travel">Travel</option>
                             <option value="Equipment">Equipment</option>
                             <option value="Research">Research</option>
@@ -54,27 +50,13 @@
                         <label class="form-label">Hours Worked</label>
                         <input type="number" class="form-control" name="HoursWorked" id="HoursWorked" min="0" max="180" required />
                     </div>
-
-
-                    <!-- Total Amount auto-calculates in controller -->
                     <div class="mb-3">
-                        <label class="form-label">Total Amount (Calculated)</label>
-                        <input type="text" class="form-control" id="totalAmount" readonly placeholder="R 0.00" />
+                        <label class="form-label">Supporting Documents</label>
+                        <input type="file" name="files" multiple class="form-control" accept=".pdf,image/*" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>
                         <textarea class="form-control" rows="3" name="Description" placeholder="Provide a detailed description of your claim..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Supporting Documents</label>
-                        <div class="dropzone border p-3 text-center" id="dropzone">
-                            <i class="fas fa-cloud-upload-alt fs-1 text-muted mb-2"></i>
-                            <p>Drag & drop files here, or browse</p>
-                            <small>Max 5MB per file, PDF or image format</small>
-                            <input type="file" class="form-control mt-2 d-none" multiple accept=".pdf,.jpg,.png" id="fileInput" />
-                            <button type="button" class="btn btn-outline-secondary mt-2">Choose Files</button>
-                            <div id="fileList" class="mt-2 text-muted"></div>
-                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Submit Claim</button>
                 </form>
@@ -100,14 +82,18 @@
                     <tbody>
                         @if (Model != null && Model.Any())
                         {
-                            @foreach (var item in Model.Take(5))
+                            foreach (var item in Model.Take(5))
                             {
                                 <tr>
                                     <td>@item.ClaimId</td>
                                     <td>@item.ClaimDate.ToString("yyyy-MM-dd")</td>
                                     <td>@item.Type</td>
                                     <td>R@item.Amount</td>
-                                    <td><span class="badge @(item.Status == ClaimStatus.Approved ? "bg-success" : item.Status == ClaimStatus.Pending ? "bg-warning" : "bg-danger")">@item.Status</span></td>
+                                    <td>
+                                        <span class="badge @(item.Status == ClaimStatus.Approved ? "bg-success" : item.Status == ClaimStatus.Pending ? "bg-warning" : item.Status == ClaimStatus.Verified ? "bg-info" : "bg-danger")">
+                                            @item.Status
+                                        </span>
+                                    </td>
                                 </tr>
                             }
                         }
@@ -120,62 +106,9 @@
                     </tbody>
                 </table>
                 <div class="d-flex justify-content-between p-2 small text-muted">
-                    <a href="#">Previous</a>
-                    <a href="#">1</a>
-                    <a href="#">Next</a>
+                    <a asp-area="" asp-controller="Claims" asp-action="Status">View All</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        // Dropzone JS (drag-drop animation)
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('fileInput');
-        const fileList = document.getElementById('fileList');
-        const chooseBtn = dropzone.querySelector('button');
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, preventDefaults, false);
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, () => dropzone.classList.add('highlight'), false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, () => dropzone.classList.remove('highlight'), false);
-        });
-
-        dropzone.addEventListener('drop', handleDrop, false);
-        function handleDrop(e) {
-            const files = e.dataTransfer.files;
-            fileInput.files = files;
-            updateFileDisplay(files);
-        }
-
-        chooseBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => updateFileDisplay(e.target.files));
-
-        function updateFileDisplay(files) {
-            if (files.length > 0) {
-                fileList.innerHTML = `${files.length} file(s) selected`;
-            } else {
-                fileList.innerHTML = '';
-            }
-        }
-    </script>
-    <style>
-        .highlight {
-            border-color: var(--primary-blue);
-            background-color: #e3f2fd;
-        }
-    </style>
-}

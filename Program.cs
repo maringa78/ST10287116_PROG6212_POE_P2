@@ -12,7 +12,7 @@ namespace ST10287116_PROG6212_POE_P2
     {
         public static void Main(string[] args)
         {
-            // Ensure correct middleware order and Razor Pages removal (using MVC only)
+           
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddControllersWithViews();

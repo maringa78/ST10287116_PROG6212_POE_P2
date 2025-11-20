@@ -5,7 +5,8 @@ using ST10287116_PROG6212_POE_P2.Models;
 using Microsoft.AspNetCore.Http;
 using ST10287116_PROG6212_POE_P2.Services.Validation;
 using ST10287116_PROG6212_POE_P2.Data;
-using System.Security.Claims; 
+using System.Security.Claims;
+using ClaimModel = ST10287116_PROG6212_POE_P2.Models.Claim;
 
 namespace ST10287116_PROG6212_POE_P2.Controllers
 {
@@ -14,131 +15,133 @@ namespace ST10287116_PROG6212_POE_P2.Controllers
     {
         private readonly ClaimService _service;
         private readonly ILogger<ClaimsController> _log;
-        private readonly ApplicationDbContext _claimServiceContext; // Dependency for context
-        public ClaimsController(ClaimService service, ILogger<ClaimsController> log, ApplicationDbContext claimServiceContext)
+        private readonly ApplicationDbContext _ctx;
+        public ClaimsController(ClaimService service, ILogger<ClaimsController> log, ApplicationDbContext ctx)
         {
             _service = service;
             _log = log;
-            _claimServiceContext = claimServiceContext; // Initialize context
+            _ctx = ctx;
         }
 
-        public IActionResult Submit() => View(new ST10287116_PROG6212_POE_P2.Models.Claim()); // Claim entity
+        public IActionResult Submit()
+        {
+            var sid = HttpContext.Session.GetString("UserId");
+            var lecturer = !string.IsNullOrEmpty(sid)
+                ? _ctx.Users.FirstOrDefault(u => u.Id.ToString() == sid)
+                : null;
+            ViewBag.HourlyRate = lecturer?.HourlyRate ?? 0m;
+            return View(new ClaimModel { HourlyRate = lecturer?.HourlyRate ?? 0m });
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(ST10287116_PROG6212_POE_P2.Models.Claim model, List<IFormFile> files)  // Files param for uploads
+        public async Task<IActionResult> Submit(ClaimModel model, List<IFormFile> files)
         {
-            if (!ModelState.IsValid)
-            {
-                return View(model);  // Return with errors (e.g, invalid rate)
-            }
-
-            model.ClaimDate = model.ClaimDate == default ? DateTime.Now : model.ClaimDate;
-            model.Status = ClaimStatus.Pending;  // Initial status for workflow (coordinator verifies next)
-            var userId = HttpContext.Session.GetString("UserId");
-            if (string.IsNullOrEmpty(userId))
+            var uid = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(uid))
                 return RedirectToAction("Login", "Account");
 
-            model.UserId = userId;
-
-            // Fetch lecturer for rate
-            var lecturer = _claimServiceContext.Users.FirstOrDefault(u => u.Id.ToString() == userId);
-          
-            int lecturerIntId = lecturer?.Id ?? 0;
-            var monthHours = _service.GetMonthlyHoursForUser(lecturerIntId, DateTime.Now.Year, DateTime.Now.Month);
-            if (monthHours + model.HoursWorked > 180)
+            var lecturerEntity = _ctx.Users.FirstOrDefault(u => u.Id.ToString() == uid);
+            if (lecturerEntity == null)
             {
-                ModelState.AddModelError("", "Monthly hour limit (180) exceeded.");
+                ModelState.AddModelError("", "Lecturer not found.");
                 return View(model);
             }
 
-            model.LecturerId = 1;  // Ensure lecturer filter
+            if (model.HourlyRate <= 0)
+                model.HourlyRate = lecturerEntity.HourlyRate;
+
+            if (!ModelState.IsValid)
+            {
+                _log.LogWarning("Model invalid on submit for user {UserId}. Errors: {Errors}",
+                    uid,
+                    string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
+                ViewBag.HourlyRate = lecturerEntity.HourlyRate;
+                return View(model);
+            }
+
+            model.ClaimId = "CLM-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"); // unique
+            model.ClaimDate = model.ClaimDate == default ? DateTime.Now : model.ClaimDate;
+            model.Status = ClaimStatus.Pending;
+            model.UserId = uid;
+            model.LecturerId = lecturerEntity.Id;
             model.Created = DateTime.Now;
             model.LastUpdated = DateTime.Now;
-            model.ClaimMonth = model.ClaimDate.ToString("MMMM yyyy");  // NEW: Auto-set e.g., "November 2025"
+            model.ClaimMonth = model.ClaimDate.ToString("MMMM yyyy");
 
-            //  Calculate Total Amount (Hours * Rate, fallback to Amount)
-            if (model.HoursWorked > 0 && model.HourlyRate > 0)
+            var monthlyHours = _service.GetMonthlyHoursForUser(lecturerEntity.Id, DateTime.Now.Year, DateTime.Now.Month);
+            if (monthlyHours + model.HoursWorked > 180)
             {
-                model.TotalAmount = model.HoursWorked * model.HourlyRate;
-            }
-            else
-            {
-                model.TotalAmount = model.Amount;
+                ModelState.AddModelError("", "Monthly hour limit (180) exceeded.");
+                ViewBag.HourlyRate = lecturerEntity.HourlyRate;
+                return View(model);
             }
 
-            //  Handle supporting documents upload
+            model.TotalAmount = (model.HoursWorked > 0 && model.HourlyRate > 0)
+                ? model.HoursWorked * model.HourlyRate
+                : model.Amount;
+
             var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
             if (!Directory.Exists(uploadsDir))
-            {
                 Directory.CreateDirectory(uploadsDir);
-            }
 
             foreach (var file in files)
             {
-                if (file.Length > 0)
+                if (file.Length <= 0) continue;
+                if (file.Length > 5 * 1024 * 1024)
                 {
-                    // Validate size <5MB and type (PDF or image)
-                    if (file.Length > 5 * 1024 * 1024)
-                    {
-                        ModelState.AddModelError("", "File too large (max 5MB).");
-                        return View(model);
-                    }
-                    if (file.ContentType != "application/pdf" && !file.ContentType.StartsWith("image/"))
-                    {
-                        ModelState.AddModelError("", "Invalid file type (PDF or image only).");
-                        return View(model);
-                    }
-
-                    // Save file with unique name
-                    var uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-                    var filePath = Path.Combine(uploadsDir, uniqueFileName);
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream);
-                    }
-
-                    // Adds toDocuments list for viewing in admin
-                    model.Documents.Add(new Document
-                    {
-                        FileName = file.FileName,
-                        FilePath = $"/uploads/{uniqueFileName}"
-                    });
+                    ModelState.AddModelError("", "File too large (max 5MB).");
+                    ViewBag.HourlyRate = lecturerEntity.HourlyRate;
+                    return View(model);
                 }
+                if (file.ContentType != "application/pdf" && !file.ContentType.StartsWith("image/"))
+                {
+                    ModelState.AddModelError("", "Invalid file type (PDF or image only).");
+                    ViewBag.HourlyRate = lecturerEntity.HourlyRate;
+                    return View(model);
+                }
+                var uniqueFileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+                var filePath = Path.Combine(uploadsDir, uniqueFileName);
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await file.CopyToAsync(stream);
+
+                model.Documents.Add(new Document
+                {
+                    FileName = file.FileName,
+                    FilePath = $"/uploads/{uniqueFileName}"
+                });
             }
 
-            // after binding model and before saving:
-            var uid = HttpContext.Session.GetString("UserId");
-            if (string.IsNullOrEmpty(uid)) return RedirectToAction("Login", "Account");
-            model.UserId = uid;
-            var lecturerEntity = _claimServiceContext.Users.FirstOrDefault(u => u.Id.ToString() == uid);
-            var monthlyHours = _service.GetMonthlyHoursForUser(lecturerEntity!.Id, DateTime.Now.Year, DateTime.Now.Month);
             var (ok, error) = ClaimValidator.ValidateBusiness(model, monthlyHours);
             if (!ok)
             {
                 ModelState.AddModelError("", error!);
+                ViewBag.HourlyRate = lecturerEntity.HourlyRate;
                 return View(model);
             }
 
-            _service.Create(model);  // Save claim + documents
+            _log.LogInformation("Saving claim for UserId={UserId} ClaimId={ClaimId}", uid, model.ClaimId);
+            _service.Create(model);
 
-            return RedirectToAction("Index", "Dashboard", new { area = "Lecturer" });
+            return RedirectToAction("Status");
         }
 
         public IActionResult Status()
         {
-            // insures is not null before calling GetUserClaims
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? HttpContext.Session.GetString("UserId");
             if (string.IsNullOrEmpty(userId))
-            {
-                // Redirect to login or handle as appropriate
                 return RedirectToAction("Login", "Account");
-            }
 
             var mine = _service.GetUserClaims(userId);
-
             return View(mine);
+        }
+
+        [HttpGet]
+        public IActionResult DebugAll()
+        {
+            var all = _service.GetForUser(HttpContext.Session.GetString("UserId"));
+            return Json(all.Select(c => new { c.Id, c.ClaimId, c.UserId, c.Type, c.TotalAmount }));
         }
     }
 }

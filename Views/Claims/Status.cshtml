@@ -1,0 +1,41 @@
+@using ST10287116_PROG6212_POE_P2.Models
+@model IEnumerable<ST10287116_PROG6212_POE_P2.Models.Claim>
+@{
+    ViewData["Title"] = "My Claims";
+}
+
+<h2>My Claims</h2>
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Hours</th>
+            <th>Rate</th>
+            <th>Total</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    @if (!Model.Any())
+    {
+        <tr><td colspan="7" class="text-muted text-center">No claims submitted.</td></tr>
+    }
+    else
+    {
+        @foreach (var c in Model)
+        {
+            <tr>
+                <td>@c.ClaimId</td>
+                <td>@c.ClaimDate.ToString("yyyy-MM-dd")</td>
+                <td>@c.Type</td>
+                <td>@c.HoursWorked</td>
+                <td>R @c.HourlyRate.ToString("F2")</td>
+                <td>R @c.TotalAmount.ToString("F2")</td>
+                <td><span class="badge @(c.Status == ClaimStatus.Approved ? "bg-success" : c.Status == ClaimStatus.Verified ? "bg-info" : c.Status == ClaimStatus.Pending ? "bg-warning" : "bg-danger")">@c.Status</span></td>
+            </tr>
+        }
+    }
+    </tbody>
+</table>

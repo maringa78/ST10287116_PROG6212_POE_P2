@@ -1,78 +1,116 @@
 ﻿@using ST10287116_PROG6212_POE_P2.Models
-@model IEnumerable<ST10287116_PROG6212_POE_P2.Models.Claim>
+@model IEnumerable<Claim>
+
 @{
     ViewData["Title"] = "Verify Claims - ClaimIT";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h2>Verify Claims (Coordinator)</h2>
-<table class="table">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Hours</th>
-            <th>Rate</th>
-            <th>Total Amount</th>
-            <th>Status</th>
-            <th>Documents</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (!Model.Any())
-        {
-            <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Hours</th>
-                <th>Rate</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Documents</th>
-                <th>Actions</th>
-            </tr>
-            }
-        else
-        {
-            @foreach (var item in Model)
-            {
-                <tr>    
-                    <td>@item.ClaimId</td>
-                    <td>@item.ClaimDate.ToString("yyyy-MM-dd")</td>
-                    <td>@item.Type</td>
-                    <td>@item.HoursWorked</td>
-                    <td>@item.HourlyRate</td>
-                    <td>R @item.TotalAmount.ToString("F2")</td>
-                    <td>@item.Status</td>
-                    <td>
-                        @if (item.Documents != null && item.Documents.Any())
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 mb-0"><i class="fa fa-check-circle text-primary me-2"></i>Verify Claims (Coordinator)</h2>
+        <span class="badge bg-secondary">Pending: @Model.Count()</span>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th class="text-center">Hours</th>
+                        <th class="text-end">Rate</th>
+                        <th class="text-end">Total</th>
+                        <th>Status</th>
+                        <th>Documents</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="fa fa-inbox fa-lg d-block mb-2"></i>
+                            No pending claims to verify.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        var badgeClass = item.Status switch
                         {
-                            <ul class="list-unstyled">
-                                @foreach (var doc in item.Documents)
+                            ClaimStatus.Pending   => "bg-warning text-dark",
+                            ClaimStatus.Verified  => "bg-info text-dark",
+                            ClaimStatus.Approved  => "bg-success",
+                            ClaimStatus.Rejected  => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+                        <tr>
+                            <td class="small">@item.ClaimId</td>
+                            <td>@item.ClaimDate:yyyy-MM-dd</td>
+                            <td>@item.Type</td>
+                            <td class="text-center">@item.HoursWorked</td>
+                            <td class="text-end">R @item.HourlyRate.ToString("F2")</td>
+                            <td class="text-end">R @item.TotalAmount.ToString("F2")</td>
+                            <td>
+                                <span class="badge @badgeClass">@item.Status</span>
+                            </td>
+                            <td class="small">
+                                @if (item.Documents != null && item.Documents.Any())
                                 {
-                                    <li><a href="@doc.FilePath" target="_blank">@doc.FileName</a></li>
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach (var doc in item.Documents)
+                                        {
+                                            <li>
+                                                <a href="@doc.FilePath" target="_blank" class="text-decoration-none">
+                                                    <i class="fa fa-file-pdf text-danger me-1"></i>@doc.FileName
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
                                 }
-                            </ul>
-                        }
-                        else
-                        {
-                            <span class="text-muted">No documents</span>
-                        }
-                    </td>
-                    <td>
-                        <form asp-action="Verify" method="post" class="d-inline">
-                            <input type="hidden" name="id" value="@item.Id" />
-                            <button type="submit" class="btn btn-success btn-sm">Verify</button>
-                        </form>
-                        <form asp-action="Reject" method="post" class="d-inline ms-1">
-                            <input type="hidden" name="id" value="@item.Id" />
-                            <button type="submit" class="btn btn-danger btn-sm">Reject</button>
-                        </form>
-                    </td>
-                </tr>
-            }
-        }
-    </tbody>
-</table>
+                                else
+                                {
+                                    <span class="text-muted">None</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <form asp-area="Coordinator" asp-controller="Track" asp-action="Verify" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Verify">
+                                        <i class="fa fa-check"></i>
+                                    </button>
+                                </form>
+                                <form asp-area="Coordinator" asp-controller="Track" asp-action="Reject" method="post" class="d-inline ms-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Optional client-side confirm
+        document.querySelectorAll('form[asp-action="Reject"]').forEach(f => {
+            f.addEventListener('submit', e => {
+                if (!confirm('Reject this claim?')) e.preventDefault();
+            });
+        });
+    </script>
+}

@@ -17,38 +17,31 @@ namespace ST10287116_PROG6212_POE_P2.Services
             _ctx.SaveChanges();
         }
 
-        public IEnumerable<Claim> GetForUser(string? userId)
-        {
-            if (!string.IsNullOrEmpty(userId))
-                return _ctx.Claims.Where(c => c.UserId == userId).ToList();
-            return Enumerable.Empty<Claim>();
-        }
+        public IEnumerable<Claim> GetForUser(string? userId) =>
+            !string.IsNullOrEmpty(userId)
+                ? _ctx.Claims.Where(c => c.UserId == userId).Include(c => c.Documents).ToList()
+                : Enumerable.Empty<Claim>();
 
         public IEnumerable<Claim> GetPendingForCoordinator() =>
-            _ctx.Claims.Where(c => c.Status == ClaimStatus.Pending).ToList();
+            _ctx.Claims.Where(c => c.Status == ClaimStatus.Pending).Include(c => c.Documents).ToList();
 
-        // ADDED: Used by Coordinator workflow controllers
         public IEnumerable<Claim> GetPendingClaims() =>
             _ctx.Claims.Where(c => c.Status == ClaimStatus.Pending)
                        .Include(c => c.Documents)
                        .ToList();
 
-        public int GetMonthlyHoursForUser(int lecturerId, int year, int month)
-        {
-            return _ctx.Claims
+        public int GetMonthlyHoursForUser(int lecturerId, int year, int month) =>
+            _ctx.Claims
                 .Where(c => c.LecturerId == lecturerId
                             && c.ClaimDate.Year == year
                             && c.ClaimDate.Month == month)
                 .Sum(c => c.HoursWorked);
-        }
 
-        public IEnumerable<Claim> GetVerifiedClaims()
-        {
-            return _ctx.Claims
+        public IEnumerable<Claim> GetVerifiedClaims() =>
+            _ctx.Claims
                 .Where(c => c.Status == ClaimStatus.Verified)
                 .Include(c => c.Documents)
                 .ToList();
-        }
 
         public void UpdateStatus(int claimId, ClaimStatus newStatus)
         {
@@ -56,14 +49,18 @@ namespace ST10287116_PROG6212_POE_P2.Services
             if (claim != null)
             {
                 claim.Status = newStatus;
+                claim.LastUpdated = DateTime.Now;
                 _ctx.SaveChanges();
             }
         }
 
-        internal string? GetUserClaims(string userId)
-        {
-            throw new NotImplementedException();
-        }
+        // FIX: Return user claims (list) instead of throwing
+        public IEnumerable<Claim> GetUserClaims(string userId) =>
+            _ctx.Claims
+                 .Where(c => c.UserId == userId)
+                 .Include(c => c.Documents)
+                 .OrderByDescending(c => c.ClaimDate)
+                 .ToList();
 
         // DTO for approved claims report
         public record ApprovedClaimRow(string ClaimId, string LecturerEmail, int Hours, decimal Rate, decimal Total, DateTime Date);
@@ -71,15 +68,13 @@ namespace ST10287116_PROG6212_POE_P2.Services
         //  Report method used by HR Approved page & ReportController
         public IEnumerable<ApprovedClaimRow> GetApprovedClaimsReport(DateTime? from, DateTime? to)
         {
-            var query = _ctx.Claims
-                .Where(c => c.Status == ClaimStatus.Approved);
+            var query = _ctx.Claims.Where(c => c.Status == ClaimStatus.Approved);
 
             if (from.HasValue)
                 query = query.Where(c => c.ClaimDate >= from.Value.Date);
             if (to.HasValue)
                 query = query.Where(c => c.ClaimDate <= to.Value.Date);
 
-            // Join users to get lecturer email
             var result = from c in query
                          join u in _ctx.Users on c.LecturerId equals u.Id
                          select new ApprovedClaimRow(
