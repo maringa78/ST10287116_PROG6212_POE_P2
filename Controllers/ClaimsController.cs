@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ST10287116_PROG6212_POE_P2.Services;
 using ST10287116_PROG6212_POE_P2.Models;
 using Microsoft.AspNetCore.Http;
+using ST10287116_PROG6212_POE_P2.Services.Validation;
 
 namespace ST10287116_PROG6212_POE_P2.Controllers
 {
@@ -104,6 +105,19 @@ namespace ST10287116_PROG6212_POE_P2.Controllers
                         FilePath = $"/uploads/{uniqueFileName}"
                     });
                 }
+            }
+
+            // after binding model and before saving:
+            var uid = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(uid)) return RedirectToAction("Login", "Account");
+            model.UserId = uid;
+            var lecturerEntity = _claimServiceContext.User.FirstOrDefault(u => u.Id.ToString() == uid);
+            var monthlyHours = _claimService.GetMonthlyHoursForUser(lecturerEntity!.Id, DateTime.Now.Year, DateTime.Now.Month);
+            var (ok, error) = ClaimValidator.ValidateBusiness(model, monthlyHours);
+            if (!ok)
+            {
+                ModelState.AddModelError("", error!);
+                return View(model);
             }
 
             _claimService.CreateClaim(model);  // Save claim + documents
