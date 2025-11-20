@@ -37,19 +37,26 @@
             <textarea asp-for="Description" class="form-control"></textarea>
             <span asp-validation-for="Description" class="text-danger"></span>
         </div>
-        <div>
+        <div class="mb-2">
             <label>Hourly Rate</label>
             <span>@ViewBag.HourlyRate</span>
-            <input type="hidden" asp-for="HourlyRate" />
         </div>
+        <div class="mb-2">
+            <label>Hours Worked</label>
+            <input asp-for="HoursWorked" class="form-control" id="HoursWorked" />
+            <span asp-validation-for="HoursWorked" class="text-danger"></span>
+        </div>
+        <div class="mb-2">
+            <label>Total (Auto)</label>
+            <span id="TotalDisplay">0.00</span>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script>
-            // Auto-calc total on hours input change
-            const hoursInput = document.getElementById('HoursWorked');
-            const totalSpan = document.getElementById('TotalAmountDisplay');
             const rate = parseFloat('@ViewBag.HourlyRate');
-            hoursInput.addEventListener('input', () => {
-                const h = parseInt(hoursInput.value || '0');
-                totalSpan.textContent = (h * rate).toFixed(2);
+            $('#HoursWorked').on('input', function() {
+                let h = parseInt($(this).val() || '0');
+                if (h < 0) h = 0;
+                $('#TotalDisplay').text((h * rate).toFixed(2));
             });
         </script>
         <button type="submit" class="btn btn-primary">Submit Claim</button>
