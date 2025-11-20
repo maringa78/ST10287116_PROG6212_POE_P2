@@ -13,6 +13,7 @@
                 </div>
                 <div class="card-body">
                     <form asp-action="Login" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                         <div class="mb-3">
                             <label asp-for="Email" class="form-label">Username (Email)</label>
                             <input asp-for="Email" class="form-control" value="john.doe@example.com" />
@@ -36,5 +37,5 @@
     </div>
 </div>
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />  <!-- Client-side validation -->
+    <partial name="_ValidationScriptsPartial" />
 }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using ST10287116_PROG6212_POE_P2.Models;
 using ST10287116_PROG6212_POE_P2.Services;  
+
 namespace ST10287116_PROG6212_POE_P2.Controllers
 {
     public class AccountController(AuthService authService, ILogger<AccountController> logger) : Controller 
@@ -15,31 +16,34 @@ namespace ST10287116_PROG6212_POE_P2.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public IActionResult Login(UserLogin model)
         {
             if (ModelState.IsValid)
             {
-                try
+                var user = _authService.ValidateUser(model.Email, model.Password);
+                if (user != null)
                 {
-                    var user = _authService.ValidateUser(model.Email, model.Password);
-                    if (user != null)
+                    // Set session data (MUST for access control)
+                    HttpContext.Session.SetString("UserId", user.Id.ToString());
+                    HttpContext.Session.SetString("Role", user.Role.ToString());
+                    HttpContext.Session.SetString("NameSurname", user.Username);  // Use Username as fallback
+                    HttpContext.Session.SetString("HourlyRate", user.HourlyRate.ToString("F2"));  // For lecturer auto-calc
+
+                    // NEW: Role-based redirect (checklist: prevent unauthorized access)
+                    var role = user.Role.ToString().ToLower();
+                    return role switch
                     {
-                        HttpContext.Session.SetString("UserId", user.Id.ToString());
-                        HttpContext.Session.SetString("Role", user.Role.ToString());
-                        return RedirectToAction("Index", user.Role.ToString() == "Lecturer" ? "Dashboard" :
-                                                 user.Role.ToString() == "Coordinator" ? "Track" : "Dashboard",
-                                                 new { area = user.Role.ToString() });
-                    }
-                    ModelState.AddModelError(string.Empty, "Invalid credentials");
+                        "hr" => RedirectToAction("Index", "User", new { area = "HR" }),  // HR to user management
+                        "lecturer" => RedirectToAction("Index", "Dashboard", new { area = "Lecturer" }),  // Lecturer to submission
+                        "coordinator" => RedirectToAction("Index", "Track", new { area = "Coordinator" }),  // Coordinator to verify
+                        "manager" => RedirectToAction("Index", "Dashboard", new { area = "Manager" }),  // Manager to approve
+                        _ => RedirectToAction("Index", "Home")  // Fallback
+                    };
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during login for {Email}", model.Email);
-                    ModelState.AddModelError(string.Empty, "An unexpected error occurred. Please try again.");
-                }
+                ModelState.AddModelError("", "Invalid credentials");
             }
             return View(model);
+            
         }
 
         public IActionResult Logout()
@@ -47,11 +51,5 @@ namespace ST10287116_PROG6212_POE_P2.Controllers
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
         }
-    }
-
-    public class UserLogin
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
     }
 }
