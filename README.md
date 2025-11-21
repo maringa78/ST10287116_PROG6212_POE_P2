@@ -142,6 +142,9 @@ User receives an updated view of their claim status
 
 The system centralizes the claim process and ensures full transparency from submission to approval
 
+# Link to video demonstration:
+https://youtu.be/vP5etllFhsA
+
 
 Refrences:
 ASP.NET Core MVC Views. Available at: https://learn.microsoft.com/en-us/aspnet/core/mvc/views/overview?view=aspnetcore-8.0.
