@@ -78,6 +78,41 @@ namespace ST10287116_PROG6212_POE_P2
                     );
                     ctx.SaveChanges();
                 }
+
+                // Seed sample claims so Coordinator/Manager pages show data
+                if (!ctx.Claims.Any())
+                {
+                    var lecturer = ctx.Users.First(u => u.Role == UserRole.Lecturer);
+                    ctx.Claims.AddRange(
+                        new Claim
+                        {
+                            Type = ClaimType.Research,
+                            Amount = 0m,
+                            Description = "Research hours",
+                            Status = ClaimStatus.Pending,
+                            HoursWorked = 8,
+                            HourlyRate = lecturer.HourlyRate,
+                            TotalAmount = 8 * lecturer.HourlyRate,
+                            ClaimDate = DateTime.Today.AddDays(-2),
+                            UserId = lecturer.Id.ToString(),
+                            LecturerId = lecturer.Id
+                        },
+                        new Claim
+                        {
+                            Type = ClaimType.Development,
+                            Amount = 0m,
+                            Description = "Course development",
+                            Status = ClaimStatus.Verified, // Will show on Manager dashboard
+                            HoursWorked = 6,
+                            HourlyRate = lecturer.HourlyRate,
+                            TotalAmount = 6 * lecturer.HourlyRate,
+                            ClaimDate = DateTime.Today.AddDays(-1),
+                            UserId = lecturer.Id.ToString(),
+                            LecturerId = lecturer.Id
+                        }
+                    );
+                    ctx.SaveChanges();
+                }
             }
 
             app.Run();

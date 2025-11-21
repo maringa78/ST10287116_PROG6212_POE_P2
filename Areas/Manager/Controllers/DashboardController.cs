@@ -23,6 +23,7 @@ namespace ST10287116_PROG6212_POE_P2.Areas.Manager.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Approve(int id)
         {
             _claimService.UpdateStatus(id, ClaimStatus.Approved);
@@ -30,6 +31,7 @@ namespace ST10287116_PROG6212_POE_P2.Areas.Manager.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Reject(int id)
         {
             _claimService.UpdateStatus(id, ClaimStatus.Rejected);

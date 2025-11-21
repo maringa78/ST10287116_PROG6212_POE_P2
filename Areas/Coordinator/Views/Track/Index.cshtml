@@ -52,7 +52,7 @@
                         };
                         <tr>
                             <td class="small">@item.ClaimId</td>
-                            <td>@item.ClaimDate:yyyy-MM-dd</td>
+                            <td>@item.ClaimDate.ToString("yyyy-MM-dd")</td>
                             <td>@item.Type</td>
                             <td class="text-center">@item.HoursWorked</td>
                             <td class="text-end">R @item.HourlyRate.ToString("F2")</td>
@@ -87,7 +87,7 @@
                                         <i class="fa fa-check"></i>
                                     </button>
                                 </form>
-                                <form asp-area="Coordinator" asp-controller="Track" asp-action="Reject" method="post" class="d-inline ms-1">
+                                <form asp-area="Coordinator" asp-controller="Track" asp-action="Reject" method="post" class="d-inline ms-1 js-reject-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@item.Id" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject">
@@ -106,8 +106,8 @@
 
 @section Scripts {
     <script>
-        // Optional client-side confirm
-        document.querySelectorAll('form[asp-action="Reject"]').forEach(f => {
+        // Attach confirm to actual rendered forms (asp-* attrs are not in HTML)
+        document.querySelectorAll('.js-reject-form').forEach(f => {
             f.addEventListener('submit', e => {
                 if (!confirm('Reject this claim?')) e.preventDefault();
             });

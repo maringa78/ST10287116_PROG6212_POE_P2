@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Areas\HR\Data\" />
+    <Folder Include="Areas\HR\Controllers\Data\" />
     <Folder Include="Areas\HR\Models\" />
   </ItemGroup>
 
